@@ -1,6 +1,8 @@
 #include "Arduino.h"
 #include <Servo.h>
+#include "Adafruit_VL53L0X.h"
 
+Adafruit_VL53L0X lox = Adafruit_VL53L0X();
 const int PAN_PIN = 3;
 const int TILT_PIN = 2;
 const int MIN_SERVO_VALUE = 5;
@@ -104,13 +106,31 @@ void gotoposition(int pan, int tilt, int speed)
   }
 }
 
+void findDistance(){
+  VL53L0X_RangingMeasurementData_t measure;
+
+  Serial.print("Reading a measurement... ");
+  lox.rangingTest(&measure, false); // pass in 'true' to get debug data printout!
+
+  if (measure.RangeStatus != 4) {  // phase failures have incorrect data
+    Serial.print("Distance (mm): "); Serial.println(measure.RangeMilliMeter);
+  } else {
+    Serial.println(" out of range ");
+  }
+}
 
 void setup()
 {
   panServo.attach(PAN_PIN); // attaches the servo on GIO2 to the servo object
   tiltServo.attach(TILT_PIN);
-  Serial.begin(115200);
-  //gotoposition( 5, 0, 5);
+  Serial.begin(9600);
+
+  if (!lox.begin()) {
+    Serial.println(F("Failed to boot VL53L0X"));
+    while(1);
+  }
+  // power
+  Serial.println(F("VL53L0X API Simple Ranging example\n\n"));
 }
 
 void test()
@@ -129,10 +149,17 @@ void nod(int speed){
 }
 
 void map_area(int speed){
-  gotoposition(0, 90, speed);
-  gotoposition(180, 90, speed);
-  gotoposition(90, 90, speed);
-  delay(1000);
+gotoposition(85, 90, speed);
+for (int i = 85; i < 120; i++) {
+  gotoposition(i, 90, speed);
+  findDistance();
+}
+for (int i = 120; i > 85; i--) {
+  gotoposition(i, 90, speed);
+  findDistance();
+}
+
+//  delay(1000);
 }
 
 void loop()
@@ -142,8 +169,10 @@ void loop()
 // delay(1000);
 // gotoposition(180, 180, 10);
 //
- nod(20);
-map_area(40);
+
+
+map_area(300);
+
   //test();
 
 
